@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CandleWise — Candlestick Pattern Academy</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a22;
+    --surface2: #1e2430;
+    --border: #2a3044;
+    --bull: #26d07c;
+    --bear: #ff4d6d;
+    --gold: #f5c842;
+    --blue: #4d9fff;
+    --text: #e8eaf0;
+    --muted: #7a8299;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+  /* ─── HEADER ─── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--gold); letter-spacing: -0.5px; }
+  .logo span { color: var(--bull); }
+  .level-tabs { display: none; }
+  .level-btn { display: none; }
+
+  /* ─── MAIN NAV ─── */
+  .tab-nav {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    background: var(--surface); padding: 0 32px;
+  }
+  .tab-btn {
+    padding: 14px 22px; background: none; border: none; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem; font-weight: 500;
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  /* ─── LAYOUT ─── */
+  .content { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ─── PATTERN GRID ─── */
+  .pattern-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .pattern-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 22px; cursor: pointer; transition: all .25s; position: relative; overflow: hidden;
+  }
+  .pattern-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--bull); opacity: 0; transition: opacity .2s;
+  }
+  .pattern-card.bearish::before { background: var(--bear); }
+  .pattern-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+  .pattern-card:hover::before { opacity: 1; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+  .pattern-name { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; }
+  .badge {
+    font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 10px; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .badge.bull { background: rgba(38,208,124,.15); color: var(--bull); border: 1px solid rgba(38,208,124,.3); }
+  .badge.bear { background: rgba(255,77,109,.15); color: var(--bear); border: 1px solid rgba(255,77,109,.3); }
+  .candle-svg { margin: 12px 0; display: flex; justify-content: center; }
+  .pattern-desc { font-size: 0.83rem; color: var(--muted); line-height: 1.6; }
+  .signal-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .signal-tag { font-size: 0.72rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--muted); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 32px;
+    animation: modalIn .25s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform:scale(.95) } to { opacity:1; transform:scale(1) } }
+  .modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; }
+  .close-btn { background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; line-height: 1; padding: 4px; }
+  .close-btn:hover { color: var(--text); }
+  .modal-section { margin-bottom: 20px; }
+  .modal-section h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); margin-bottom: 8px; font-weight: 600; }
+  .modal-section p { font-size: 0.9rem; color: #b8bccf; line-height: 1.7; }
+  .tip-box { background: rgba(245,200,66,.07); border: 1px solid rgba(245,200,66,.25); border-radius: 10px; padding: 14px 16px; margin-top: 16px; font-size: 0.87rem; color: #d4b83a; line-height: 1.6; }
+
+  /* ─── QUIZ ─── */
+  .quiz-container { max-width: 680px; margin: 0 auto; }
+  .quiz-progress { display: flex; gap: 6px; margin-bottom: 28px; }
+  .progress-dot { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background .3s; }
+  .progress-dot.done { background: var(--bull); }
+  .progress-dot.current { background: var(--gold); }
+  .quiz-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; }
+  .quiz-q-num { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .quiz-question { font-family: 'Playfair Display', serif; font-size: 1.35rem; line-height: 1.4; margin-bottom: 28px; }
+  .quiz-candle-display { display: flex; justify-content: center; margin-bottom: 24px; background: var(--surface2); border-radius: 10px; padding: 20px; }
+  .quiz-options { display: grid; gap: 10px; }
+  .quiz-opt {
+    padding: 14px 18px; border-radius: 10px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; cursor: pointer; text-align: left; transition: all .2s;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--blue); background: rgba(77,159,255,.08); }
+  .quiz-opt.correct { border-color: var(--bull); background: rgba(38,208,124,.12); color: var(--bull); }
+  .quiz-opt.wrong { border-color: var(--bear); background: rgba(255,77,109,.12); color: var(--bear); }
+  .quiz-opt:disabled { cursor: default; }
+  .quiz-feedback { margin-top: 20px; padding: 16px; border-radius: 10px; font-size: 0.88rem; line-height: 1.6; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.correct { background: rgba(38,208,124,.1); border: 1px solid rgba(38,208,124,.3); color: #7ee8b0; }
+  .quiz-feedback.wrong { background: rgba(255,77,109,.1); border: 1px solid rgba(255,77,109,.3); color: #ff8fa3; }
+  .next-btn {
+    margin-top: 18px; padding: 12px 28px; background: var(--gold); color: #0d0f14;
+    border: none; border-radius: 8px; font-weight: 700; font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; cursor: pointer; display: none; transition: opacity .2s;
+  }
+  .next-btn.show { display: inline-block; }
+  .next-btn:hover { opacity: .85; }
+  .score-card { text-align: center; padding: 48px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .score-big { font-family: 'Playfair Display', serif; font-size: 4rem; color: var(--gold); }
+  .score-label { color: var(--muted); margin: 8px 0 24px; }
+  .score-msg { font-size: 1.05rem; margin-bottom: 28px; line-height: 1.6; }
+  .restart-btn { padding: 12px 28px; background: var(--bull); color: #0d0f14; border: none; border-radius: 8px; font-weight: 700; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; }
+
+  /* ─── CHART SIM ─── */
+  .sim-container { max-width: 900px; margin: 0 auto; }
+  .sim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: gap; gap: 12px; }
+  .sim-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; }
+  .sim-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sim-btn { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--border); background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.84rem; cursor: pointer; transition: all .2s; }
+  .sim-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .sim-btn.active { background: var(--gold); color: #0d0f14; border-color: var(--gold); font-weight: 700; }
+  .chart-area { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; }
+  canvas#simChart { width: 100%; display: block; }
+  .sim-answer-panel { margin-top: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: none; }
+  .sim-answer-panel.open { display: block; }
+  .sim-identify-btn { margin-top: 16px; padding: 11px 24px; background: var(--blue); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+  .sim-pattern-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 8px; margin-top: 14px; }
+  .sim-p-opt { padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.84rem; cursor: pointer; text-align: center; transition: all .2s; }
+  .sim-p-opt:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+  .sim-p-opt.correct { border-color: var(--bull); background: rgba(38,208,124,.1); color: var(--bull); }
+  .sim-p-opt.wrong { border-color: var(--bear); background: rgba(255,77,109,.1); color: var(--bear); }
+  .sim-result { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 0.88rem; line-height: 1.6; display: none; }
+  .sim-result.show { display: block; }
+  .sim-result.correct { background: rgba(38,208,124,.1); border: 1px solid rgba(38,208,124,.3); color: #7ee8b0; }
+  .sim-result.wrong { background: rgba(255,77,109,.1); border: 1px solid rgba(255,77,109,.3); color: #ff8fa3; }
+  .next-chart-btn { margin-top: 12px; padding: 10px 22px; background: var(--gold); color: #0d0f14; border: none; border-radius: 8px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; display: none; }
+  .next-chart-btn.show { display: inline-block; }
+
+  /* ─── TIPS ─── */
+  .tips-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 16px; }
+  .tip-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .tip-icon { font-size: 1.8rem; margin-bottom: 12px; }
+  .tip-card h3 { font-family: 'Playfair Display', serif; font-size: 1.1rem; margin-bottom: 10px; }
+  .tip-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; }
+  .tip-card ul { list-style: none; padding: 0; margin-top: 10px; }
+  .tip-card ul li { font-size: 0.84rem; color: var(--muted); padding: 5px 0; border-bottom: 1px solid var(--border); line-height: 1.5; }
+  .tip-card ul li:last-child { border: none; }
+  .tip-card ul li::before { content: '→ '; color: var(--gold); font-weight: 700; }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 6px; }
+  .section-subtitle { color: var(--muted); font-size: 0.88rem; margin-bottom: 24px; }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Candle<span>Wise</span></div>
+  <div style="font-size:0.82rem;color:var(--muted);font-family:'DM Mono',monospace;">📊 24 Patterns · 3 Categories</div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="showTab('encyclopedia')">📖 Encyclopedia</button>
+  <button class="tab-btn" onclick="showTab('quiz')">🧠 Quiz</button>
+  <button class="tab-btn" onclick="showTab('simulator')">📊 Chart Simulator</button>
+  <button class="tab-btn" onclick="showTab('tips')">💡 Trading Tips</button>
+</nav>
+
+<!-- ═══════════════ ENCYCLOPEDIA ═══════════════ -->
+<div class="content">
+<div id="encyclopedia" class="section active">
+  <p class="section-title">Candlestick Pattern Encyclopedia</p>
+  <p class="section-subtitle">24 essential patterns — from single-candle signals to powerful multi-candle setups.</p>
+  <div class="pattern-grid" id="patternGrid"></div>
+</div>
+
+<!-- ═══════════════ QUIZ ═══════════════ -->
+<div id="quiz" class="section">
+  <div class="quiz-container" id="quizContainer"></div>
+</div>
+
+<!-- ═══════════════ SIMULATOR ═══════════════ -->
+<div id="simulator" class="section">
+  <div class="sim-container">
+    <div class="sim-header">
+      <div class="sim-title">Chart Pattern Simulator</div>
+      <div class="sim-controls">
+        <button class="sim-btn active" id="simBullBtn" onclick="filterSim('all')">All</button>
+        <button class="sim-btn" onclick="filterSim('bullish')">Bullish</button>
+        <button class="sim-btn" onclick="filterSim('bearish')">Bearish</button>
+        <button class="sim-btn" onclick="newSimChart()">🔀 New Chart</button>
+      </div>
+    </div>
+    <div class="chart-area">
+      <canvas id="simChart" height="300"></canvas>
+    </div>
+    <button class="sim-identify-btn" onclick="showSimOptions()">🔍 Identify Pattern</button>
+    <div class="sim-answer-panel" id="simAnswerPanel">
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:4px;">What pattern is highlighted?</p>
+      <div class="sim-pattern-options" id="simOptions"></div>
+      <div class="sim-result" id="simResult"></div>
+      <button class="next-chart-btn" id="nextChartBtn" onclick="newSimChart()">Next Chart →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TIPS ═══════════════ -->
+<div id="tips" class="section">
+  <p class="section-title">Trading Tips & Strategy</p>
+  <p class="section-subtitle">Apply candlestick patterns effectively in real-world trading.</p>
+  <div class="tips-grid" id="tipsGrid"></div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ═══════════════ DATA ═══════════════
+const patterns = {
+  beginner: [
+    {
+      name: "Doji",
+      type: "neutral",
+      desc: "Open and close are nearly equal. Signals market indecision — buyers and sellers are in equilibrium.",
+      candles: [{o:50,h:70,l:30,c:51,bull:true}],
+      detail: "The Doji forms when the opening and closing prices are virtually equal. The resulting cross-like shape signals that neither bulls nor bears gained control during the session.",
+      formation: "Single candle with open ≈ close. Long wicks on both sides are common.",
+      signal: "Indecision. Look for confirmation in the next candle before trading.",
+      tip: "💡 A Doji after a long trend is a powerful warning. Wait for the next candle to confirm a reversal before entering.",
+      tags: ["Indecision","Reversal Warning","Single Candle"]
+    },
+    {
+      name: "Hammer",
+      type: "bullish",
+      desc: "Small body at top, long lower wick (2× body). Signals potential reversal after a downtrend.",
+      candles: [{o:62,h:66,l:30,c:64,bull:true}],
+      detail: "The Hammer appears at the bottom of a downtrend. The long lower shadow shows sellers pushed prices down, but buyers stepped in to close near the open — a sign of potential reversal.",
+      formation: "Small body, lower shadow 2–3× the body, little to no upper shadow.",
+      signal: "Bullish reversal. Most reliable at support levels.",
+      tip: "💡 A green (bullish) Hammer is stronger than a red one. Confirm with the next candle closing higher.",
+      tags: ["Bullish Reversal","Downtrend Bottom","Support"]
+    },
+    {
+      name: "Shooting Star",
+      type: "bearish",
+      desc: "Small body at bottom, long upper wick. Signals potential reversal after an uptrend.",
+      candles: [{o:50,h:80,l:46,c:48,bull:false}],
+      detail: "The Shooting Star appears at the top of an uptrend. Buyers pushed prices high, but sellers took over and drove the close back near the open.",
+      formation: "Small body near the low, upper shadow 2–3× the body, little to no lower shadow.",
+      signal: "Bearish reversal. Most reliable at resistance levels.",
+      tip: "💡 A red (bearish) Shooting Star is stronger. Look for it near major resistance and confirm with a red candle next.",
+      tags: ["Bearish Reversal","Uptrend Top","Resistance"]
+    },
+    {
+      name: "Bullish Engulfing",
+      type: "bullish",
+      desc: "A large green candle completely engulfs the previous red candle. Strong bullish reversal signal.",
+      candles: [{o:60,h:63,l:45,c:47,bull:false},{o:44,h:66,l:42,c:65,bull:true}],
+      detail: "The second (green) candle's body completely covers the first (red) candle's body. This shows a dramatic shift in momentum from sellers to buyers.",
+      formation: "Two candles: first bearish, second bullish and larger — engulfs the first body.",
+      signal: "Strong bullish reversal. More reliable with high volume on the second candle.",
+      tip: "💡 The bigger the engulfing candle relative to the first, the stronger the signal. Best at key support zones.",
+      tags: ["Bullish Reversal","2-Candle","High Reliability"]
+    },
+    {
+      name: "Bearish Engulfing",
+      type: "bearish",
+      desc: "A large red candle completely engulfs the previous green candle. Strong bearish reversal signal.",
+      candles: [{o:45,h:62,l:43,c:60,bull:true},{o:63,h:65,l:41,c:43,bull:false}],
+      detail: "The second (red) candle's body completely covers the first (green) candle's body. This shows a dramatic shift from buyers to sellers taking control.",
+      formation: "Two candles: first bullish, second bearish and larger — engulfs the first body.",
+      signal: "Strong bearish reversal. Stronger with high volume on the second candle.",
+      tip: "💡 Very reliable at resistance zones. Use stop-loss above the second candle's high.",
+      tags: ["Bearish Reversal","2-Candle","High Reliability"]
+    },
+    {
+      name: "Morning Star",
+      type: "bullish",
+      desc: "3-candle pattern: large red, small body (gap down), large green. Signals bottom reversal.",
+      candles: [{o:65,h:67,l:48,c:50,bull:false},{o:47,h:51,l:43,c:46,bull:false},{o:48,h:68,l:46,c:67,bull:true}],
+      detail: "A 3-candle reversal pattern at the bottom of a downtrend. The middle 'star' candle (small body, gap down) shows indecision, while the third large green candle confirms bulls are back.",
+      formation: "Red candle → small candle (gap or near-gap) → green candle closing into first candle's body.",
+      signal: "Strong bullish reversal. One of the most reliable 3-candle patterns.",
+      tip: "💡 The green candle should close at least halfway into the first red candle's body for full confirmation.",
+      tags: ["Bullish Reversal","3-Candle","High Reliability"]
+    },
+    {
+      name: "Evening Star",
+      type: "bearish",
+      desc: "3-candle pattern: large green, small body (gap up), large red. Signals top reversal.",
+      candles: [{o:48,h:68,l:46,c:67,bull:true},{o:68,h:74,l:66,c:70,bull:true},{o:69,h:71,l:48,c:50,bull:false}],
+      detail: "The bearish counterpart to the Morning Star. Appears at the top of an uptrend. The small star candle shows buyers are losing momentum, and the red candle confirms reversal.",
+      formation: "Green candle → small candle (gap or near-gap up) → red candle closing into first green body.",
+      signal: "Strong bearish reversal. Confirm with volume on the third candle.",
+      tip: "💡 The Evening Star is the trader's warning bell. Exit longs or prepare short entries when this appears at resistance.",
+      tags: ["Bearish Reversal","3-Candle","High Reliability"]
+    },
+    {
+      name: "Hanging Man",
+      type: "bearish",
+      desc: "Looks like a Hammer but appears at an uptrend top. Warning sign of potential reversal.",
+      candles: [{o:64,h:66,l:34,c:62,bull:false}],
+      detail: "The Hanging Man has the same shape as a Hammer — small body at top, long lower wick — but appears after an uptrend. The long wick shows that selling pressure is beginning to emerge.",
+      formation: "Small body near the high, lower shadow 2–3× the body, little upper shadow.",
+      signal: "Bearish warning. Needs confirmation from the next candle.",
+      tip: "💡 The Hanging Man signals trouble but is NOT a confirmed sell signal. Wait for a red candle next session to confirm.",
+      tags: ["Bearish Warning","Uptrend Top","Needs Confirmation"]
+    },
+    {
+      name: "Inverted Hammer",
+      type: "bullish",
+      desc: "Opposite of Hammer — long upper wick, small body, appears at downtrend bottom.",
+      candles: [{o:50,h:80,l:46,c:52,bull:true}],
+      detail: "The Inverted Hammer appears at the bottom of a downtrend. The long upper wick shows buyers tried to push prices up, and while sellers pushed back, the fact it appears at lows suggests a potential reversal.",
+      formation: "Small body near the low, upper shadow 2–3× the body, little lower shadow.",
+      signal: "Bullish reversal candidate. Needs confirmation from next candle.",
+      tip: "💡 Inverted Hammer is a setup, not a trigger. Buy only after the next candle confirms with a bullish close.",
+      tags: ["Bullish Setup","Downtrend Bottom","Needs Confirmation"]
+    },
+    {
+      name: "Bullish Harami",
+      type: "bullish",
+      desc: "A small green candle inside the previous large red candle. Signals slowing downtrend momentum.",
+      candles: [{o:65,h:67,l:44,c:46,bull:false},{o:50,h:58,l:48,c:57,bull:true}],
+      detail: "The Harami (meaning 'pregnant' in Japanese) occurs when a small candle forms completely within the body of the previous large candle. A bullish Harami suggests the downtrend is losing steam.",
+      formation: "Large red candle followed by a smaller green candle whose body fits within the first.",
+      signal: "Potential bullish reversal. Weaker than Engulfing — needs more confirmation.",
+      tip: "💡 The smaller the second candle (especially a Doji), the stronger the signal. Called a 'Harami Cross' if second is a Doji.",
+      tags: ["Bullish Setup","2-Candle","Weaker Signal"]
+    },
+    {
+      name: "Bearish Harami",
+      type: "bearish",
+      desc: "A small red candle inside the previous large green candle. Signals slowing uptrend momentum.",
+      candles: [{o:44,h:68,l:42,c:66,bull:true},{o:60,h:62,l:50,c:52,bull:false}],
+      detail: "The Bearish Harami occurs at the top of an uptrend. The small red candle inside the large green body signals that buying momentum is fading and a reversal may be coming.",
+      formation: "Large green candle followed by a smaller red candle whose body fits within the first.",
+      signal: "Potential bearish reversal. Best at resistance levels with confirming indicators.",
+      tip: "💡 Combine with RSI overbought readings or Fibonacci resistance for a high-confidence setup.",
+      tags: ["Bearish Setup","2-Candle","Weaker Signal"]
+    },
+    {
+      name: "Three White Soldiers",
+      type: "bullish",
+      desc: "Three consecutive large green candles, each opening within prior body. Strong bullish continuation.",
+      candles: [{o:44,h:55,l:42,c:53,bull:true},{o:53,h:63,l:51,c:62,bull:true},{o:62,h:74,l:60,c:73,bull:true}],
+      detail: "Three White Soldiers is a powerful bullish continuation pattern. Each candle opens within the previous body and closes near its high, showing steady, sustained buying pressure.",
+      formation: "Three consecutive bullish candles, each closing progressively higher with small wicks.",
+      signal: "Strong bullish continuation after a downtrend reversal.",
+      tip: "💡 Most powerful when appearing after a base/consolidation following a downtrend. If candles are very large, beware of overextension — pullback may follow.",
+      tags: ["Bullish Continuation","3-Candle","Strong Signal"]
+    },
+  ],
+  intermediate: [
+    {
+      name: "Dark Cloud Cover",
+      type: "bearish",
+      desc: "A red candle opens above prior green close but closes below its midpoint. Bearish reversal.",
+      candles: [{o:44,h:66,l:42,c:64,bull:true},{o:68,h:70,l:46,c:48,bull:false}],
+      detail: "Dark Cloud Cover appears at the top of an uptrend. The second candle gaps up at the open (creating optimism) but reverses to close below the midpoint of the first candle — a betrayal of bulls.",
+      formation: "Green candle → Red candle opens above prior close, closes below midpoint of first candle.",
+      signal: "Bearish reversal. Stronger when the red candle closes deeper into the first candle.",
+      tip: "💡 The deeper the red candle penetrates the first, the stronger the signal. A 70%+ penetration is very bearish.",
+      tags: ["Bearish Reversal","2-Candle","Uptrend Top"]
+    },
+    {
+      name: "Piercing Line",
+      type: "bullish",
+      desc: "A green candle opens below prior red close but closes above its midpoint. Bullish reversal.",
+      candles: [{o:65,h:67,l:46,c:48,bull:false},{o:44,h:66,l:42,c:64,bull:true}],
+      detail: "The Piercing Line is the bullish counterpart to Dark Cloud Cover. It appears at the bottom of a downtrend. The second candle gaps down but surges to close above the first candle's midpoint.",
+      formation: "Red candle → Green candle opens below prior close, closes above midpoint of first.",
+      signal: "Bullish reversal at downtrend bottoms and support zones.",
+      tip: "💡 Closing above the 50% level of the first candle is mandatory. The higher it closes, the more conviction.",
+      tags: ["Bullish Reversal","2-Candle","Downtrend Bottom"]
+    },
+    {
+      name: "Three Black Crows",
+      type: "bearish",
+      desc: "Three consecutive large red candles. Signals strong bearish continuation after a peak.",
+      candles: [{o:66,h:68,l:55,c:57,bull:false},{o:57,h:59,l:46,c:48,bull:false},{o:48,h:50,l:37,c:39,bull:false}],
+      detail: "Three Black Crows is the bearish mirror of Three White Soldiers. Each candle opens within the prior body and closes near the low, showing steady, relentless selling pressure.",
+      formation: "Three consecutive bearish candles, each closing lower with small upper wicks.",
+      signal: "Strong bearish continuation. Very reliable pattern.",
+      tip: "💡 If the crows appear after an extended uptrend, expect significant downside. Volume rising on each candle amplifies the signal.",
+      tags: ["Bearish Continuation","3-Candle","Strong Signal"]
+    },
+    {
+      name: "Tweezer Top",
+      type: "bearish",
+      desc: "Two candles with equal highs — one bull, one bear. Signals resistance and potential reversal.",
+      candles: [{o:50,h:70,l:48,c:68,bull:true},{o:68,h:70,l:46,c:48,bull:false}],
+      detail: "The Tweezer Top forms when two candles reach the same high. The failed second attempt to push higher shows that sellers are firmly defending that resistance level.",
+      formation: "Two candles with matching or near-equal highs at an uptrend peak.",
+      signal: "Bearish reversal at resistance. More reliable with other bearish indicators.",
+      tip: "💡 Tweezers at round number resistance levels (e.g. KLCI 1,600) or Fibonacci levels are especially powerful.",
+      tags: ["Bearish Reversal","2-Candle","Resistance"]
+    },
+    {
+      name: "Tweezer Bottom",
+      type: "bullish",
+      desc: "Two candles with equal lows — one bear, one bull. Signals support and potential reversal.",
+      candles: [{o:65,h:67,l:45,c:47,bull:false},{o:47,h:67,l:45,c:65,bull:true}],
+      detail: "The Tweezer Bottom forms when two candles reach the same low. Buyers successfully defend the support level twice, signaling strong demand.",
+      formation: "Two candles with matching or near-equal lows at a downtrend bottom.",
+      signal: "Bullish reversal at support. Best near moving averages or key price levels.",
+      tip: "💡 A Tweezer Bottom at the 200 MA combined with RSI oversold is a high-probability long setup.",
+      tags: ["Bullish Reversal","2-Candle","Support"]
+    },
+    {
+      name: "Spinning Top",
+      type: "neutral",
+      desc: "Small body with long wicks on both sides. Indecision candle — neither bulls nor bears in control.",
+      candles: [{o:52,h:70,l:32,c:50,bull:true}],
+      detail: "The Spinning Top has a small real body and long wicks on both sides, showing that price swung significantly but ended up near the open. Market is uncertain and momentum is stalling.",
+      formation: "Small real body with long upper and lower wicks of roughly equal length.",
+      signal: "Indecision. In a trend, may signal a reversal; in consolidation, confirms sideways movement.",
+      tip: "💡 A Spinning Top after a long trend is worth watching. Combine with support/resistance and volume to determine direction.",
+      tags: ["Indecision","Single Candle","Context-Dependent"]
+    },
+  ],
+  advanced: [
+    {
+      name: "Rising Three Methods",
+      type: "bullish",
+      desc: "Large green candle + 3 small red candles (within first) + large green. Bullish continuation.",
+      candles: [{o:44,h:68,l:42,c:66,bull:true},{o:64,h:66,l:56,c:58,bull:false},{o:58,h:60,l:52,c:54,bull:false},{o:54,h:56,l:48,c:50,bull:false},{o:52,h:74,l:50,c:72,bull:true}],
+      detail: "A 5-candle continuation pattern. After a strong green candle, three small red candles retrace within the first body. The final large green candle breaks out to new highs, confirming bulls are still in control.",
+      formation: "Large green → 3 small reds (contained within first body) → large green breaking above first candle high.",
+      signal: "Bullish continuation. Very reliable in strong uptrends.",
+      tip: "💡 The retracement candles should stay within the first candle's body. If they break below, the pattern is invalid.",
+      tags: ["Bullish Continuation","5-Candle","Strong Uptrend"]
+    },
+    {
+      name: "Falling Three Methods",
+      type: "bearish",
+      desc: "Large red candle + 3 small green candles (within first) + large red. Bearish continuation.",
+      candles: [{o:66,h:68,l:44,c:46,bull:false},{o:48,h:56,l:46,c:54,bull:true},{o:54,h:60,l:52,c:58,bull:true},{o:57,h:62,l:55,c:60,bull:true},{o:60,h:62,l:38,c:40,bull:false}],
+      detail: "The bearish mirror of Rising Three Methods. Three small green candles provide a brief respite in a downtrend, but the final large red candle resumes the decline with force.",
+      formation: "Large red → 3 small greens (within first body) → large red breaking below first candle low.",
+      signal: "Bearish continuation. High reliability in confirmed downtrends.",
+      tip: "💡 Use this pattern to re-enter short positions after a minor pullback in an established downtrend.",
+      tags: ["Bearish Continuation","5-Candle","Strong Downtrend"]
+    },
+    {
+      name: "Abandoned Baby",
+      type: "bullish",
+      desc: "Rare 3-candle pattern: red candle, gapped Doji, large green candle. Powerful bottom reversal.",
+      candles: [{o:64,h:66,l:46,c:48,bull:false},{o:42,h:46,l:38,c:43,bull:true},{o:46,h:70,l:44,c:68,bull:true}],
+      detail: "One of the rarest and most powerful reversal patterns. The Doji middle candle gaps away from both adjacent candles (shadows don't touch), signaling a complete exhaustion of sellers before buyers surge back.",
+      formation: "Red candle → gap down Doji (no touching shadows) → large green candle gapping up.",
+      signal: "Extremely strong bullish reversal. Very rare — high reliability when it appears.",
+      tip: "💡 True Abandoned Baby requires the Doji's shadows to not overlap with the adjacent candles. This is rare on daily charts but powerful.",
+      tags: ["Bullish Reversal","3-Candle","Rare & Powerful"]
+    },
+    {
+      name: "Three Inside Up",
+      type: "bullish",
+      desc: "Bullish Harami followed by a green candle closing above first candle's high. Confirmed reversal.",
+      candles: [{o:65,h:67,l:44,c:46,bull:false},{o:50,h:58,l:48,c:57,bull:true},{o:55,h:70,l:53,c:68,bull:true}],
+      detail: "The Three Inside Up is a Bullish Harami confirmed by a third bullish candle. The third candle closing above the first candle's high eliminates ambiguity — bulls are definitively in control.",
+      formation: "Large red → small green inside first body → green candle closing above first candle's high.",
+      signal: "Confirmed bullish reversal. More reliable than standalone Harami.",
+      tip: "💡 This is the Harami but 'confirmed.' Traders who missed the Harami entry can enter on the third candle's close.",
+      tags: ["Bullish Reversal","3-Candle","High Reliability"]
+    },
+    {
+      name: "Kicker",
+      type: "bullish",
+      desc: "Two opposite candles with a gap between them. One of the most powerful reversal signals.",
+      candles: [{o:65,h:67,l:44,c:46,bull:false},{o:50,h:72,l:48,c:70,bull:true}],
+      detail: "The Kicker occurs when a bearish candle is followed by a bullish candle that gaps completely above the first. This dramatic reversal often follows news events and signals a fundamental shift in market direction.",
+      formation: "Red candle → gap up → green candle (no overlap at all between the two candles).",
+      signal: "Extremely strong bullish reversal. Often triggered by fundamental news.",
+      tip: "💡 Kickers often gap at earnings or major news announcements. The gap itself is the signal — it should ideally not be filled quickly.",
+      tags: ["Bullish Reversal","2-Candle","Extremely Powerful"]
+    },
+    {
+      name: "Mat Hold",
+      type: "bullish",
+      desc: "Variation of Rising Three Methods. Long-term bullish continuation during strong uptrends.",
+      candles: [{o:44,h:68,l:42,c:66,bull:true},{o:68,h:72,l:62,c:64,bull:false},{o:62,h:65,l:56,c:58,bull:false},{o:57,h:62,l:54,c:60,bull:false},{o:60,h:76,l:58,c:74,bull:true}],
+      detail: "Similar to Rising Three Methods but the small retracement candles don't necessarily stay fully within the first candle's body — they may dip below the open. The key is the final green candle making new highs.",
+      formation: "Large green → 2–4 small declining candles → large green breaking to new high.",
+      signal: "Bullish continuation. Indicates a healthy trend with buyers absorbing pullbacks.",
+      tip: "💡 The Mat Hold pattern shows that even after a pullback, bulls come back stronger. A great pattern for trend followers.",
+      tags: ["Bullish Continuation","5-Candle","Trend Following"]
+    },
+  ]
+};
+
+const tips = [
+  { icon: "📍", title: "Always Confirm with Context", text: "No candlestick pattern works in isolation. Always ask: Is this at a support or resistance level? Is volume confirming the move?", list: ["Check trend direction first", "Use support & resistance zones", "Volume should confirm the pattern", "Higher timeframes = more reliable"] },
+  { icon: "🔢", title: "Use Multiple Timeframes", text: "A reversal pattern on a 15-minute chart means little. The same pattern on a daily or weekly chart carries far more weight.", list: ["Daily charts: best for swing trades", "Weekly: confirms major trends", "15-min/1hr: entries only after D1 confirms", "Top-down analysis = best results"] },
+  { icon: "🛡️", title: "Always Use Stop-Loss", text: "Candlestick patterns give you a signal — not a guarantee. Always define your risk before entering a trade.", list: ["Place stop below pattern low (long)", "Place stop above pattern high (short)", "Risk max 1–2% of capital per trade", "No stop = gambling, not trading"] },
+  { icon: "📊", title: "Combine with Indicators", text: "Strengthen candlestick signals by combining with technical indicators for high-probability setups.", list: ["RSI overbought/oversold confirmation", "MACD crossover alignment", "Bollinger Band squeeze + pattern", "Volume spike validates the signal"] },
+  { icon: "🧘", title: "Patience Over Perfection", text: "The best traders don't trade every pattern they see. They wait for the highest-quality setups — where multiple signals align.", list: ["Quality over quantity", "Wait for pattern + level + indicator", "Miss a trade = avoid a loss", "Track your setups in a journal"] },
+  { icon: "📈", title: "Trend is Your Friend", text: "Bullish patterns in an uptrend and bearish patterns in a downtrend are far more reliable than counter-trend setups.", list: ["Trade WITH the dominant trend", "Counter-trend trades need extra confirmation", "Use moving averages to define trend", "Going with the flow reduces risk"] },
+  { icon: "💹", title: "Malaysian Market Notes", text: "Applying candlestick patterns to KLCI-listed stocks requires understanding local market dynamics.", list: ["Market hours: 9:00am – 5:00pm MYT", "Check Bursa announcements before patterns", "EPF and institutional flow can override patterns", "Watch out for pre-holiday thin liquidity"] },
+  { icon: "📓", title: "Keep a Trading Journal", text: "The only way to improve is to track every trade. Record the pattern, your reasoning, and the outcome — win or lose.", list: ["Screenshot every pattern entry", "Record entry, target, and stop price", "Review weekly to spot weaknesses", "Emotional tracking is just as important"] },
+];
+
+// ═══════════════ STATE ═══════════════
+let quizQ = 0, quizScore = 0, quizAnswered = false;
+let quizQuestions = [];
+let simFilter = 'all', simCurrent = null;
+let simAnswered = false;
+
+// ═══════════════ HELPERS ═══════════════
+function getAllPatterns() {
+  return [...patterns.beginner, ...patterns.intermediate, ...patterns.advanced];
+}
+
+function drawCandle(ctx, x, y, w, h, candle, allCandles) {
+  // Scale based on full set of candles for consistent chart appearance
+  const src = allCandles || [candle];
+  const allVals = src.flatMap(c => [c.h, c.l, c.o, c.c]);
+  const dataMin = Math.min(...allVals);
+  const dataMax = Math.max(...allVals);
+  const pad = (dataMax - dataMin) * 0.15 || 5;
+  const rangeMin = dataMin - pad;
+  const rangeMax = dataMax + pad;
+  const range = rangeMax - rangeMin;
+  const toY = v => y + h - ((v - rangeMin) / range * h);
+
+  const bodyTopY = toY(Math.max(candle.o, candle.c));
+  const bodyBotY = toY(Math.min(candle.o, candle.c));
+  const bodyH = Math.max(bodyBotY - bodyTopY, 2);
+  const wickTopY = toY(candle.h);
+  const wickBotY = toY(candle.l);
+  const midX = x + w / 2;
+
+  const bodyColor = candle.bull ? '#00e676' : '#ff5252';
+  const wickColor = candle.bull ? '#69ffaa' : '#ff8a80';
+
+  // Wicks — drawn first, behind body
+  ctx.strokeStyle = wickColor;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  if (wickTopY < bodyTopY - 1) {
+    ctx.beginPath(); ctx.moveTo(midX, wickTopY); ctx.lineTo(midX, bodyTopY); ctx.stroke();
+  }
+  if (wickBotY > bodyBotY + 1) {
+    ctx.beginPath(); ctx.moveTo(midX, bodyBotY); ctx.lineTo(midX, wickBotY); ctx.stroke();
+  }
+
+  // Body
+  ctx.fillStyle = bodyColor;
+  ctx.strokeStyle = bodyColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x + 2, bodyTopY, w - 4, bodyH, 2);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function renderCandleSVG(candles, w, h) {
+  const svgW = candles.length * 40 + 20;
+  const svgH = h;
+  const allVals = candles.flatMap(c => [c.h, c.l, c.o, c.c]);
+  const dataMin = Math.min(...allVals);
+  const dataMax = Math.max(...allVals);
+  const padding = (dataMax - dataMin) * 0.18 || 4;
+  const rangeMin = dataMin - padding;
+  const rangeMax = dataMax + padding;
+  const range = rangeMax - rangeMin;
+  const padX = 10, padY = 10;
+  const drawH = svgH - padY * 2;
+  const toY = v => padY + drawH - ((v - rangeMin) / range * drawH);
+  // Background
+  let shapes = `<rect width="${svgW}" height="${svgH}" fill="#1a2235" rx="6"/>`;
+  // Subtle grid lines
+  for (let i = 1; i <= 3; i++) {
+    const gy = padY + (drawH / 4) * i;
+    shapes += `<line x1="${padX}" y1="${gy}" x2="${svgW - padX}" y2="${gy}" stroke="#2a3550" stroke-width="0.5"/>`;
+  }
+  candles.forEach((c, i) => {
+    const cw = 22, cx = padX + i * 40;
+    const midX = cx + cw / 2;
+    const bullColor  = '#00e676';
+    const bearColor  = '#ff5252';
+    const color = c.bull ? bullColor : bearColor;
+    const wickColor = c.bull ? '#69ffaa' : '#ff8a80';  // brighter than body for visibility
+    const bodyTopY = toY(Math.max(c.o, c.c));
+    const bodyBotY = toY(Math.min(c.o, c.c));
+    const bodyH = Math.max(bodyBotY - bodyTopY, 3);
+    const wickTopY = toY(c.h);
+    const wickBotY = toY(c.l);
+    // Draw wicks FIRST (behind body), thicker + brighter
+    if (wickTopY < bodyTopY - 1) {
+      shapes += `<line x1="${midX}" y1="${wickTopY}" x2="${midX}" y2="${bodyTopY}" stroke="${wickColor}" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    if (wickBotY > bodyBotY + 1) {
+      shapes += `<line x1="${midX}" y1="${bodyBotY}" x2="${midX}" y2="${wickBotY}" stroke="${wickColor}" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    // Body on top
+    shapes += `<rect x="${cx + 2}" y="${bodyTopY}" width="${cw - 4}" height="${bodyH}" fill="${color}" stroke="${color}" stroke-width="1" rx="2"/>`;
+  });
+  return `<svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">${shapes}</svg>`;
+}
+
+// ═══════════════ ENCYCLOPEDIA ═══════════════
+function renderEncyclopedia() {
+  const all = getAllPatterns();
+  const grid = document.getElementById('patternGrid');
+  grid.innerHTML = all.map((p, i) => `
+    <div class="pattern-card ${p.type === 'bearish' ? 'bearish' : ''}" onclick="openModal(${i})">
+      <div class="card-top">
+        <div class="pattern-name">${p.name}</div>
+        <span class="badge ${p.type === 'bullish' ? 'bull' : p.type === 'bearish' ? 'bear' : 'bull'}" style="${p.type==='neutral'?'background:rgba(245,200,66,.12);color:#f5c842;border-color:rgba(245,200,66,.3)':''}">
+          ${p.type === 'bullish' ? '▲ Bullish' : p.type === 'bearish' ? '▼ Bearish' : '◆ Neutral'}
+        </span>
+      </div>
+      <div class="candle-svg">${renderCandleSVG(p.candles, 200, 100)}</div>
+      <p class="pattern-desc">${p.desc}</p>
+      <div class="signal-row">${p.tags.map(t=>`<span class="signal-tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+
+function openModal(idx) {
+  const all = getAllPatterns();
+  const p = all[idx];
+  const content = document.getElementById('modalContent');
+  content.innerHTML = `
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">${p.name}</div>
+        <span class="badge ${p.type === 'bullish' ? 'bull' : p.type === 'bearish' ? 'bear' : 'bull'}" style="margin-top:6px;display:inline-block;${p.type==='neutral'?'background:rgba(245,200,66,.12);color:#f5c842;border-color:rgba(245,200,66,.3)':''}">
+          ${p.type === 'bullish' ? '▲ Bullish' : p.type === 'bearish' ? '▼ Bearish' : '◆ Neutral'}
+        </span>
+      </div>
+      <button class="close-btn" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div style="display:flex;justify-content:center;padding:10px 0;margin-bottom:20px;">
+      ${renderCandleSVG(p.candles, 300, 130)}
+    </div>
+    <div class="modal-section"><h4>What It Is</h4><p>${p.detail}</p></div>
+    <div class="modal-section"><h4>Formation Rules</h4><p>${p.formation}</p></div>
+    <div class="modal-section"><h4>Trading Signal</h4><p>${p.signal}</p></div>
+    <div class="tip-box">${p.tip}</div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+// ═══════════════ QUIZ ═══════════════
+function buildQuiz() {
+  const all = getAllPatterns();
+  quizQuestions = [...all].sort(() => Math.random() - .5).slice(0, Math.min(8, all.length));
+  quizQ = 0; quizScore = 0; quizAnswered = false;
+  renderQuiz();
+}
+
+function renderQuiz() {
+  const questions = quizQuestions;
+  const container = document.getElementById('quizContainer');
+  if (quizQ >= questions.length) {
+    const pct = Math.round(quizScore / questions.length * 100);
+    const msg = pct >= 80 ? '🏆 Excellent! You have a strong grasp of candlestick patterns.' :
+                pct >= 60 ? '📈 Good job! Review the patterns you missed and try again.' :
+                '📚 Keep studying! Review the Encyclopedia and try again.';
+    container.innerHTML = `
+      <div class="score-card">
+        <div class="score-big">${quizScore}/${questions.length}</div>
+        <div class="score-label">Score — ${pct}%</div>
+        <div class="score-msg">${msg}</div>
+        <button class="restart-btn" onclick="buildQuiz()">🔄 Try Again</button>
+      </div>`;
+    return;
+  }
+  const q = questions[quizQ];
+  const wrongPool = getAllPatterns().filter(p => p.name !== q.name);
+  const wrongs = wrongPool.sort(() => Math.random() - .5).slice(0, 3);
+  const opts = [...wrongs.map(p => p.name), q.name].sort(() => Math.random() - .5);
+  const dots = questions.map((_, i) =>
+    `<div class="progress-dot ${i < quizQ ? 'done' : i === quizQ ? 'current' : ''}"></div>`
+  ).join('');
+  container.innerHTML = `
+    <div class="quiz-progress">${dots}</div>
+    <div class="quiz-card">
+      <div class="quiz-q-num">Question ${quizQ + 1} of ${questions.length}</div>
+      <div class="quiz-question">What candlestick pattern is shown below?</div>
+      <div class="quiz-candle-display">${renderCandleSVG(q.candles, 300, 130)}</div>
+      <div class="quiz-options">
+        ${opts.map(o => `<button class="quiz-opt" data-choice="${o.replace(/"/g,'&quot;')}" onclick="answerQuiz(this)">${o}</button>`).join('')}
+      </div>
+      <div class="quiz-feedback" id="quizFeedback"></div>
+      <button class="next-btn" id="nextBtn" onclick="nextQ()">Next Question →</button>
+    </div>`;
+}
+
+function answerQuiz(btn) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+  const chosen = btn.getAttribute('data-choice');
+  const correct = quizQuestions[quizQ].name;
+  const tip = quizQuestions[quizQ].tip;
+  document.querySelectorAll('.quiz-opt').forEach(b => { b.disabled = true; });
+  const fb = document.getElementById('quizFeedback');
+  if (chosen === correct) {
+    btn.classList.add('correct');
+    quizScore++;
+    fb.className = 'quiz-feedback show correct';
+    fb.innerHTML = `✅ Correct! ${tip}`;
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.quiz-opt').forEach(b => { if (b.getAttribute('data-choice') === correct) b.classList.add('correct'); });
+    fb.className = 'quiz-feedback show wrong';
+    fb.innerHTML = `❌ Not quite. The correct answer is <strong>${correct}</strong>. ${tip}`;
+  }
+  document.getElementById('nextBtn').classList.add('show');
+}
+
+function nextQ() {
+  quizQ++;
+  quizAnswered = false;
+  renderQuiz();
+}
+
+// ═══════════════ SIMULATOR ═══════════════
+function filterSim(f) {
+  simFilter = f;
+  document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  newSimChart();
+}
+
+function getSimPattern() {
+  let pool = getAllPatterns();
+  if (simFilter === 'bullish') pool = pool.filter(p => p.type === 'bullish');
+  if (simFilter === 'bearish') pool = pool.filter(p => p.type === 'bearish');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function newSimChart() {
+  simAnswered = false;
+  simCurrent = getSimPattern();
+  document.getElementById('simAnswerPanel').classList.remove('open');
+  document.getElementById('simResult').className = 'sim-result';
+  document.getElementById('nextChartBtn').className = 'next-chart-btn';
+  drawSimChart();
+}
+
+function drawSimChart() {
+  const canvas = document.getElementById('simChart');
+  const dpr = window.devicePixelRatio || 1;
+  const displayW = canvas.parentElement.clientWidth - 40;
+  const displayH = 300;
+  canvas.style.width = displayW + 'px';
+  canvas.style.height = displayH + 'px';
+  canvas.width = displayW * dpr;
+  canvas.height = displayH * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  ctx.fillStyle = '#161a22';
+  ctx.fillRect(0, 0, displayW, displayH);
+
+  // Grid
+  ctx.strokeStyle = '#2a3044';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = (displayH / 4) * i;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(displayW, y); ctx.stroke();
+  }
+
+  // Random background candles
+  const bgCount = 14;
+  const patCount = simCurrent.candles.length;
+  const totalCount = bgCount + patCount + 3;
+  const cw = Math.min(28, (displayW - 40) / totalCount);
+  const padX = 20;
+
+  // Generate background
+  let price = 50;
+  const bgCandles = [];
+  const isBull = simCurrent.type === 'bullish';
+  for (let i = 0; i < bgCount; i++) {
+    const trend = isBull ? -0.6 : 0.6;
+    const o = price;
+    const drift = (Math.random() - 0.5 + trend) * 5;
+    const c = Math.max(10, Math.min(80, o + drift));
+    const h = Math.max(o, c) + Math.random() * 5;
+    const l = Math.min(o, c) - Math.random() * 5;
+    bgCandles.push({ o, h: Math.min(88, h), l: Math.max(5, l), c, bull: c >= o });
+    price = c;
+  }
+
+  // Draw background
+  const allChartCandles = [...bgCandles, ...simCurrent.candles];
+  bgCandles.forEach((c, i) => {
+    drawCandle(ctx, padX + i * (cw + 4), 10, cw, displayH - 20, c, allChartCandles);
+  });
+
+  // Gap + pattern
+  const patStartX = padX + bgCount * (cw + 4) + cw;
+  simCurrent.candles.forEach((c, i) => {
+    ctx.save();
+    ctx.shadowColor = simCurrent.type === 'bullish' ? '#00e676' : simCurrent.type === 'bearish' ? '#ff5252' : '#f5c842';
+    ctx.shadowBlur = 14;
+    drawCandle(ctx, patStartX + i * (cw + 4), 10, cw, displayH - 20, c, allChartCandles);
+    ctx.restore();
+  });
+
+  // Bracket
+  const bracketX = patStartX - 6;
+  const bracketW = patCount * (cw + 4) + 10;
+  ctx.strokeStyle = '#f5c84280';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.strokeRect(bracketX, 8, bracketW, displayH - 16);
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#f5c842';
+  ctx.font = '500 11px DM Mono, monospace';
+  ctx.fillText('? PATTERN', bracketX + 4, displayH - 10);
+}
+
+function showSimOptions() {
+  const panel = document.getElementById('simAnswerPanel');
+  panel.classList.add('open');
+  const pool = getAllPatterns();
+  const wrongs = pool.filter(p => p.name !== simCurrent.name).sort(() => Math.random() - .5).slice(0, 5);
+  const opts = [...wrongs.map(p => p.name), simCurrent.name].sort(() => Math.random() - .5);
+  document.getElementById('simOptions').innerHTML = opts.map(o =>
+    `<button class="sim-p-opt" onclick="answerSim(this,'${o}')">${o}</button>`
+  ).join('');
+}
+
+function answerSim(btn, chosen) {
+  if (simAnswered) return;
+  simAnswered = true;
+  document.querySelectorAll('.sim-p-opt').forEach(b => b.disabled = true);
+  const res = document.getElementById('simResult');
+  if (chosen === simCurrent.name) {
+    btn.classList.add('correct');
+    res.className = 'sim-result show correct';
+    res.innerHTML = `✅ Correct! That's the <strong>${simCurrent.name}</strong>. ${simCurrent.tip}`;
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('.sim-p-opt').forEach(b => { if (b.textContent === simCurrent.name) b.classList.add('correct'); });
+    res.className = 'sim-result show wrong';
+    res.innerHTML = `❌ That's actually a <strong>${simCurrent.name}</strong>. ${simCurrent.tip}`;
+  }
+  document.getElementById('nextChartBtn').className = 'next-chart-btn show';
+}
+
+// ═══════════════ TIPS ─── 
+function renderTips() {
+  document.getElementById('tipsGrid').innerHTML = tips.map(t => `
+    <div class="tip-card">
+      <div class="tip-icon">${t.icon}</div>
+      <h3>${t.title}</h3>
+      <p>${t.text}</p>
+      <ul>${t.list.map(l => `<li>${l}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+}
+
+// ═══════════════ NAV ─── 
+function showTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'quiz') buildQuiz();
+  if (tab === 'simulator') { setTimeout(newSimChart, 50); }
+}
+
+// ═══════════════ INIT ─── 
+renderEncyclopedia();
+renderTips();
+window.addEventListener('resize', () => {
+  if (document.getElementById('simulator').classList.contains('active')) drawSimChart();
+});
+</script>
+</body>
+</html>
